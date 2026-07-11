@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useSimulationStore } from '@/simulation';
-import { AlertTriangle, Radio } from 'lucide-react';
+import { AlertTriangle, Radio, CloudRain, Database, Bell, User } from 'lucide-react';
 import styles from './Header.module.css';
 
 /* ──────────────────────────────────────────
@@ -97,6 +99,7 @@ function StatBox({
 }
 
 export const Header: React.FC = () => {
+  const pathname = usePathname();
   const clock = useClock();
   const timeStr = clock
     ? clock.toLocaleTimeString('en-US', {
@@ -197,6 +200,64 @@ export const Header: React.FC = () => {
             <Radio size={12} /> LIVE
           </div>
         )}
+
+        <div
+          style={{
+            height: '24px',
+            width: '1px',
+            backgroundColor: 'var(--border-slate-gray)',
+          }}
+        />
+
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: '0.6rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Current Incident</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-primary)', fontWeight: 600 }}>Ernakulam Floods</span>
+        </div>
+
+        <div
+          style={{
+            height: '24px',
+            width: '1px',
+            backgroundColor: 'var(--border-slate-gray)',
+            marginLeft: '10px'
+          }}
+        />
+
+        {/* Navigation Tabs */}
+        <div style={{ display: 'flex', gap: '8px', marginLeft: '10px' }}>
+          <Link href="/" style={{
+            padding: '6px 12px',
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: pathname === '/' ? 'var(--color-primary-blue-dim)' : 'var(--bg-panel)',
+            color: pathname === '/' ? 'var(--color-primary-blue)' : 'var(--text-secondary)',
+            border: pathname === '/' ? '1px solid var(--color-primary-blue)' : '1px solid var(--border-slate-gray)',
+            fontSize: '0.75rem',
+            fontWeight: pathname === '/' ? 600 : 500,
+            textDecoration: 'none'
+          }}>Mission Control</Link>
+          
+          <Link href="/replay" style={{
+            padding: '6px 12px',
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: pathname === '/replay' ? 'var(--color-primary-blue-dim)' : 'var(--bg-panel)',
+            color: pathname === '/replay' ? 'var(--color-primary-blue)' : 'var(--text-secondary)',
+            border: pathname === '/replay' ? '1px solid var(--color-primary-blue)' : '1px solid var(--border-slate-gray)',
+            fontSize: '0.75rem',
+            fontWeight: pathname === '/replay' ? 600 : 500,
+            textDecoration: 'none'
+          }}>Historical Replay</Link>
+
+          <Link href="/analysis" style={{
+            padding: '6px 12px',
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: pathname === '/analysis' ? 'var(--color-primary-blue-dim)' : 'var(--bg-panel)',
+            color: pathname === '/analysis' ? 'var(--color-primary-blue)' : 'var(--text-secondary)',
+            border: pathname === '/analysis' ? '1px solid var(--color-primary-blue)' : '1px solid var(--border-slate-gray)',
+            fontSize: '0.75rem',
+            fontWeight: pathname === '/analysis' ? 600 : 500,
+            textDecoration: 'none'
+          }}>Incident Analysis</Link>
+        </div>
       </div>
 
       {/* Center: Alert Strip */}
@@ -234,17 +295,15 @@ export const Header: React.FC = () => {
       {/* Right: Stats + Clock */}
       <div className={styles.statsSection}>
         <StatBox label="Active Units" value={stats.activeUnits} />
-        <StatBox
-          label="Open Missions"
-          value={stats.openMissions}
-          color="var(--color-warning-amber)"
-        />
-        <StatBox
-          label="At Risk"
-          value={stats.atRisk}
-          color={stats.atRisk > 2 ? 'var(--color-critical-red)' : 'var(--color-warning-amber)'}
-        />
-        <StatBox label="Evacuated" value={stats.evacuated} color="var(--color-safe-green)" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
+          <CloudRain size={16} />
+          <span style={{ fontSize: '0.75rem', fontWeight: 500 }}>Heavy Rain</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-info-cyan)' }}>
+          <Database size={16} />
+          <span style={{ fontSize: '0.75rem', fontWeight: 500 }}>OSM Linked</span>
+        </div>
 
         <div
           style={{
@@ -274,6 +333,13 @@ export const Header: React.FC = () => {
             }}
           >
             {dateStr} · UTC−5
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: '8px' }}>
+          <Bell size={18} color="var(--text-secondary)" style={{ cursor: 'pointer' }} />
+          <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'var(--bg-deep-slate)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-slate-gray)', cursor: 'pointer' }}>
+            <User size={14} color="var(--text-secondary)" />
           </div>
         </div>
       </div>

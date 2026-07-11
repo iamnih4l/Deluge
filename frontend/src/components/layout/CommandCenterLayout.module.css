@@ -1,11 +1,11 @@
 .layout {
   display: grid;
-  grid-template-columns: 64px 1fr 340px;
+  grid-template-columns: 340px 1fr 340px;
   grid-template-rows: 52px 1fr 64px;
   grid-template-areas:
-    "sidebar header header"
-    "sidebar map right-panel"
-    "sidebar timeline timeline";
+    "header header header"
+    "left-panel map right-panel"
+    "timeline timeline timeline";
   height: 100vh;
   width: 100vw;
   background-color: var(--bg-deep-slate);
@@ -25,17 +25,16 @@
   gap: 16px;
 }
 
-/* ── Sidebar (Icon Rail) ── */
-.sidebar {
-  grid-area: sidebar;
+/* ── Left Mission Planner Panel ── */
+.leftPanel {
+  grid-area: left-panel;
   background-color: var(--bg-dark-graphite);
   border-right: 1px solid var(--border-slate-gray);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 12px 0;
   z-index: 20;
-  gap: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* ── Center Map ── */
@@ -76,8 +75,8 @@
     grid-template-areas:
       "header"
       "map"
-      "right-panel"
-      "sidebar";
+      "left-panel"
+      "right-panel";
   }
 
   .timeline {
@@ -96,7 +95,7 @@
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
   }
 
-  .sidebar {
+  .leftPanel {
     flex-direction: row;
     justify-content: space-around;
     padding: 0;

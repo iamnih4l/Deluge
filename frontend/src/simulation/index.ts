@@ -5,9 +5,10 @@
    ────────────────────────────────────────── */
 
 import { create } from 'zustand';
-import type { SimulationState, FloodCell, RoadSegment, Vehicle, Shelter, Infrastructure, Mission, SimAlert } from './types';
+import type { SimulationState, FloodCell, RoadSegment, Vehicle, Shelter, Infrastructure, Mission, SimAlert, VehicleType, LngLat } from './types';
 import { tickFloodCells, updateRoadStatuses, generateFloodAlerts } from './floodEngine';
 import { tickVehicles } from './vehicleEngine';
+import { systemEventBus, SimEvent } from './eventBus';
 import {
   INITIAL_FLOOD_CELLS,
   INITIAL_ROADS,
@@ -67,6 +68,20 @@ interface SimulationActions {
   reset: () => void;
   /** Acknowledge an alert */
   acknowledgeAlert: (id: string) => void;
+  /** Initialize EventBus Listeners */
+  initEventBusListeners: () => void;
+  /** Select an entity on the map */
+  setSelectedEntity: (entity: { type: 'flood' | 'road' | 'vehicle' | 'shelter' | 'infrastructure', id: string } | null) => void;
+  /** Connect to the Python FastAPI backend */
+  connectToServer: () => void;
+  /** Send message to backend */
+  sendCommand: (action: string, payload?: any) => void;
+  /** Update Draft Mission */
+  setDraftMission: (payload: Partial<{ type: VehicleType | null; origin: LngLat | null; destination: LngLat | null }>) => void;
+  /** Set Proposed Mission */
+  setProposedMission: (payload: any) => void;
+  /** Toggle Layer Visibility */
+  setLayerVisibility: (layer: keyof SimulationState['layerVisibility'], visible: boolean) => void;
 }
 
 const initialState: SimulationState = {
@@ -87,127 +102,50 @@ const initialState: SimulationState = {
     roads: INITIAL_ROADS,
     shelters: INITIAL_SHELTERS,
   }),
+  selectedEntity: null,
+  draftMission: {
+    type: null,
+    origin: null,
+    destination: null,
+  },
+  proposedMission: null,
+  layerVisibility: {
+    roads: true,
+    buildings: true,
+    floods: true,
+    vehicles: true,
+    shelters: true,
+    routes: true,
+  },
 };
+
+export let wsInstance: WebSocket | null = null;
 
 export const useSimulationStore = create<SimulationState & SimulationActions>((set, get) => ({
   ...initialState,
 
   tick: () => {
-    const state = get();
-    if (!state.isRunning || state.time >= 100) {
-      if (state.time >= 100) set({ isRunning: false });
-      return;
-    }
-
-    const newTime = Math.min(state.time + 0.5 * state.speed, 100);
-
-    // 1. Advance flood cells
-    const newFloodCells = tickFloodCells(state.floodCells, newTime);
-
-    // 2. Update road statuses
-    const prevRoads = state.roads;
-    const newRoads = updateRoadStatuses(state.roads, newFloodCells, newTime);
-
-    // 3. Move vehicles
-    const newVehicles = tickVehicles(state.vehicles);
-
-    // 4. Update shelters (intake simulation)
-    const newShelters = state.shelters.map((s) => {
-      if (s.status === 'at_capacity' || !s.accessible) return s;
-      const newOccupancy = Math.min(s.currentOccupancy + s.intakeRate * 0.1, s.capacity);
-      const newStatus = newOccupancy >= s.capacity * 0.95 ? 'at_capacity' as const : s.status;
-      return { ...s, currentOccupancy: Math.round(newOccupancy), status: newStatus };
-    });
-
-    // 5. Update mission ETAs
-    const newMissions = state.missions.map((m) => {
-      if (m.status === 'complete') return m;
-      if (m.eta !== null && m.eta > 0) {
-        const newEta = Math.max(0, m.eta - 0.05 * state.speed);
-        if (newEta <= 0) {
-          return { ...m, eta: 0, status: 'complete' as const, completedAt: newTime };
-        }
-        return { ...m, eta: Math.round(newEta * 10) / 10 };
-      }
-      return m;
-    });
-
-    // 6. Generate new alerts
-    const newAlerts = generateFloodAlerts(newFloodCells, newRoads, prevRoads, newTime);
-    const existingAlertIds = new Set(state.alerts.map((a) => a.id));
-    const uniqueNewAlerts = newAlerts.filter((a) => !existingAlertIds.has(a.id));
-
-    // 7. Update infrastructure based on flood
-    const newInfra = state.infrastructure.map((inf) => {
-      if (inf.id === 'infra-grid-delta' && newTime > 15) {
-        return { ...inf, status: 'offline' as const, detail: 'Submerged · 0 MW' };
-      }
-      if (inf.id === 'infra-bridge' && newTime > 45) {
-        return { ...inf, status: 'offline' as const, detail: 'Collapsed · Impassable' };
-      }
-      return inf;
-    });
-
-    const severity = computeSeverity(newTime);
-    const stats = computeStats({
-      vehicles: newVehicles,
-      missions: newMissions,
-      roads: newRoads,
-      shelters: newShelters,
-    });
-
-    set({
-      time: newTime,
-      severity,
-      floodCells: newFloodCells,
-      roads: newRoads,
-      vehicles: newVehicles,
-      shelters: newShelters,
-      infrastructure: newInfra,
-      missions: newMissions,
-      alerts: [...uniqueNewAlerts, ...state.alerts],
-      stats,
-    });
+    // Ticking is handled by the backend
   },
 
   setRunning: (val) => {
-    const state = get();
-    if (val && state.time >= 100) {
-      // Reset if trying to play at end
-      get().reset();
-    }
-    set({ isRunning: val });
+    get().sendCommand("set_running", { state: val });
+    set({ isRunning: val }); // Optimistic update
   },
 
-  setSpeed: (speed) => set({ speed }),
+  setSpeed: (speed) => {
+    get().sendCommand("set_speed", { speed });
+    set({ speed });
+  },
 
   seekTo: (time) => {
-    // Re-run simulation from scratch to the target time
-    const resetState = { ...initialState };
-    let currentState = resetState;
-
-    // Quick forward to desired time
-    for (let t = 0; t < time; t += 0.5) {
-      const newFloodCells = tickFloodCells(currentState.floodCells, t);
-      const newRoads = updateRoadStatuses(currentState.roads, newFloodCells, t);
-      currentState = {
-        ...currentState,
-        time: t,
-        floodCells: newFloodCells,
-        roads: newRoads,
-      };
-    }
-
-    set({
-      ...currentState,
-      time,
-      severity: computeSeverity(time),
-      isRunning: false,
-      stats: computeStats(currentState),
-    });
+    get().sendCommand("seek", { time });
+    set({ time });
   },
 
-  reset: () => set({ ...initialState }),
+  reset: () => {
+    get().sendCommand("reset");
+  },
 
   acknowledgeAlert: (id) =>
     set((state) => ({
@@ -215,4 +153,173 @@ export const useSimulationStore = create<SimulationState & SimulationActions>((s
         a.id === id ? { ...a, acknowledged: true } : a,
       ),
     })),
+
+  initEventBusListeners: () => {
+    systemEventBus.subscribe('InfrastructureFailure', (event) => {
+      set((state) => {
+        const { infrastructureId, failureType } = event.payload;
+        return {
+          infrastructure: state.infrastructure.map((inf) =>
+            inf.id === infrastructureId
+              ? {
+                  ...inf,
+                  status: failureType === 'power_loss' ? 'offline' : 'compromised',
+                  detail: `Failure detected via ${event.source} (Conf: ${(event.confidence * 100).toFixed(0)}%)`
+                }
+              : inf
+          ),
+          alerts: [
+            {
+              id: `evt-${event.id}`,
+              severity: 'critical',
+              title: `Infrastructure Failure: ${failureType.toUpperCase()}`,
+              body: `Sensor/feed reported failure at ${infrastructureId}. Confidence: ${(event.confidence * 100).toFixed(0)}%`,
+              timestamp: event.timestamp,
+              acknowledged: false,
+            },
+            ...state.alerts,
+          ]
+        };
+      });
+    });
+
+    systemEventBus.subscribe('RoadClosed', (event) => {
+      set((state) => {
+        return {
+          roads: state.roads.map((r) =>
+            r.id === event.payload.roadId
+              ? { ...r, status: 'flooded' as const, capacity: 0 }
+              : r
+          ),
+        };
+      });
+    });
+
+    systemEventBus.subscribe('FloodDetected', (event) => {
+      set((state) => {
+         // Create a new flood cell based on the detection
+         const newFloodCell: FloodCell = {
+           id: `flood-${event.id}`,
+           center: event.payload.polygon[0] as [number, number],
+           currentRadius: 50, // rough approx
+           maxRadius: 300,
+           waterDepth: event.payload.depth,
+           activationTime: state.time,
+           growthRate: 0.05,
+           polygon: event.payload.polygon
+         };
+
+         return {
+           floodCells: [...state.floodCells, newFloodCell],
+           alerts: [
+             {
+               id: `evt-f-${event.id}`,
+               severity: 'warning',
+               title: 'New Flood Zone Detected',
+               body: `Satellite SAR detected ${event.payload.depth}m flood. Confidence: ${(event.confidence * 100).toFixed(0)}%`,
+               timestamp: event.timestamp,
+               acknowledged: false,
+             },
+             ...state.alerts,
+           ]
+         };
+      });
+    });
+  },
+
+  setSelectedEntity: (entity) => {
+    set({ selectedEntity: entity });
+  },
+
+  connectToServer: () => {
+    console.log("Connecting to Deluge Backend...");
+    const ws = new WebSocket("ws://localhost:8000/ws");
+    wsInstance = ws;
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "FULL_STATE" || data.type === "TICK") {
+          const payload = data.payload;
+          set((state) => {
+            let updatedRoads = payload.roads !== undefined ? payload.roads : state.roads;
+            if (payload.roadStatuses && updatedRoads) {
+              let changed = false;
+              const newRoads = updatedRoads.map((r: any) => {
+                const newStatus = payload.roadStatuses[r.id];
+                if (newStatus && r.status !== newStatus) {
+                  changed = true;
+                  return { ...r, status: newStatus };
+                } else if (!newStatus && r.status !== 'open') {
+                  changed = true;
+                  return { ...r, status: 'open' };
+                }
+                return r;
+              });
+              if (changed) {
+                updatedRoads = newRoads;
+              }
+            }
+
+            return {
+              time: payload.time !== undefined ? payload.time : state.time,
+              isRunning: payload.isRunning !== undefined ? payload.isRunning : state.isRunning,
+              speed: payload.speed !== undefined ? payload.speed : state.speed,
+              severity: payload.severity !== undefined ? payload.severity : state.severity,
+              floodCells: payload.floodCells !== undefined ? payload.floodCells : state.floodCells,
+              roads: updatedRoads,
+              vehicles: payload.vehicles !== undefined ? payload.vehicles : state.vehicles,
+              shelters: payload.shelters !== undefined ? payload.shelters : state.shelters,
+              infrastructure: payload.infrastructure !== undefined ? payload.infrastructure : state.infrastructure,
+              missions: payload.missions !== undefined ? payload.missions : state.missions,
+              alerts: payload.alerts !== undefined ? payload.alerts : state.alerts,
+              stats: computeStats({
+                vehicles: payload.vehicles !== undefined ? payload.vehicles : state.vehicles,
+                missions: payload.missions !== undefined ? payload.missions : state.missions,
+                roads: updatedRoads,
+                shelters: payload.shelters !== undefined ? payload.shelters : state.shelters,
+              }),
+            };
+          });
+        } else if (data.type === "MISSION_PLAN_RESULT") {
+          set({
+            proposedMission: {
+              route: data.payload.route,
+              snappedOrigin: data.payload.snapped_origin,
+              snappedDestination: data.payload.snapped_destination,
+              distance: data.payload.distance,
+            }
+          });
+        }
+      } catch (e) {
+        console.error("Failed to parse websocket message", e);
+      }
+    };
+    
+    ws.onopen = () => console.log("Connected to Backend.");
+    ws.onclose = () => {
+      console.log("Disconnected from Backend. Retrying in 3s...");
+      wsInstance = null;
+      setTimeout(() => get().connectToServer(), 3000);
+    };
+  },
+
+  sendCommand: (action: string, payload: any = {}) => {
+    if (wsInstance && wsInstance.readyState === WebSocket.OPEN) {
+      wsInstance.send(JSON.stringify({ action, ...payload }));
+    } else {
+      console.warn("Cannot send command, WebSocket not connected.");
+    }
+  },
+
+  setDraftMission: (payload) => set((state) => ({ draftMission: { ...state.draftMission, ...payload } })),
+  
+  setProposedMission: (payload) => set({ proposedMission: payload }),
+  
+  setLayerVisibility: (layer, visible) => set((state) => ({ layerVisibility: { ...state.layerVisibility, [layer]: visible } })),
 }));
+
+// Initialize EventBus integration automatically
+useSimulationStore.getState().initEventBusListeners();
+// Connect to the backend
+useSimulationStore.getState().connectToServer();

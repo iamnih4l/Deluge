@@ -20,8 +20,12 @@ export function generateFloodPolygon(center: LngLat, radiusMeters: number): LngL
 
   for (let i = 0; i <= segments; i++) {
     const angle = (i / segments) * Math.PI * 2;
-    const lng = center[0] + Math.cos(angle) * radiusMeters * DEG_PER_METER_LNG;
-    const lat = center[1] + Math.sin(angle) * radiusMeters * DEG_PER_METER_LAT;
+    // Simple deterministic pseudo-random noise based on angle
+    const noise = (Math.sin(angle * 4) * 0.15) + (Math.cos(angle * 7) * 0.1);
+    const noisyRadius = radiusMeters * (1 + noise);
+    
+    const lng = center[0] + Math.cos(angle) * noisyRadius * DEG_PER_METER_LNG;
+    const lat = center[1] + Math.sin(angle) * noisyRadius * DEG_PER_METER_LAT;
     coords.push([lng, lat]);
   }
 

@@ -98,12 +98,9 @@ export interface Mission {
   priority: Priority;
   assignedUnit: string | null;
   eta: number | null;
-  /** Simulation time this mission was created */
-  createdAt: number;
-  /** Simulation time this mission was completed (-1 = not complete) */
-  completedAt: number;
-  /** Target location */
-  target: LngLat;
+  startedAt: number;
+  completedAt: number | null;
+  targetLocation: LngLat | null;
 }
 
 export interface SimAlert {
@@ -115,6 +112,13 @@ export interface SimAlert {
   timestamp: number;
   /** Has the operator acknowledged this alert? */
   acknowledged: boolean;
+  /** Confidence score of the intelligence (0.0 to 1.0) */
+  confidence?: number;
+  /** Action payload to be sent to backend upon approval */
+  action?: {
+    type: string;
+    payload: any;
+  };
 }
 
 export interface SimulationState {
@@ -144,5 +148,27 @@ export interface SimulationState {
     evacuated: number;
     roadsFlooded: number;
     shelterCapacity: number;
+  };
+  selectedEntity: { type: 'flood' | 'road' | 'vehicle' | 'shelter' | 'infrastructure', id: string, data?: any } | null;
+  
+  /* ── UI State ── */
+  draftMission: {
+    type: VehicleType | null;
+    origin: LngLat | null;
+    destination: LngLat | null;
+  };
+  proposedMission: {
+    route: LngLat[];
+    snappedOrigin: LngLat;
+    snappedDestination: LngLat;
+    distance: number;
+  } | null;
+  layerVisibility: {
+    roads: boolean;
+    buildings: boolean;
+    floods: boolean;
+    vehicles: boolean;
+    shelters: boolean;
+    routes: boolean;
   };
 }

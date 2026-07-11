@@ -6,7 +6,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useMapStore } from '@/store';
 import { useSimulationStore } from '@/simulation';
 import { MOCK_BUILDINGS } from '@/features/map/mockData';
-import { SimulationPanel } from '@/components/ui/SimulationPanel';
+import { loadMapIcons } from '@/features/map/mapIcons';
 import {
   Building2,
   Waves,
@@ -172,6 +172,63 @@ function buildMarkerGeoJSON(
   };
 }
 
+function buildMissionMarkerGeoJSON(
+  draftMission: ReturnType<typeof useSimulationStore.getState>['draftMission'],
+  proposedMission: ReturnType<typeof useSimulationStore.getState>['proposedMission'],
+): GeoJSON.FeatureCollection {
+  const features: GeoJSON.Feature[] = [];
+  
+  if (proposedMission) {
+    features.push({
+      type: 'Feature',
+      properties: { role: 'origin' },
+      geometry: { type: 'Point', coordinates: proposedMission.snappedOrigin },
+    });
+    features.push({
+      type: 'Feature',
+      properties: { role: 'destination' },
+      geometry: { type: 'Point', coordinates: proposedMission.snappedDestination },
+    });
+  } else {
+    if (draftMission.origin) {
+      features.push({
+        type: 'Feature',
+        properties: { role: 'origin' },
+        geometry: { type: 'Point', coordinates: draftMission.origin },
+      });
+    }
+    if (draftMission.destination) {
+      features.push({
+        type: 'Feature',
+        properties: { role: 'destination' },
+        geometry: { type: 'Point', coordinates: draftMission.destination },
+      });
+    }
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+function buildProposedRouteGeoJSON(
+  proposedMission: ReturnType<typeof useSimulationStore.getState>['proposedMission'],
+): GeoJSON.FeatureCollection {
+  if (!proposedMission || proposedMission.route.length < 2) {
+    return { type: 'FeatureCollection', features: [] };
+  }
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates: proposedMission.route,
+        },
+      }
+    ]
+  };
+}
+
 /* ──────────────────────────────────────────
    Component
    ────────────────────────────────────────── */
@@ -190,6 +247,9 @@ export const Interactive3DMap: React.FC = () => {
   const roads = useSimulationStore((s) => s.roads);
   const shelters = useSimulationStore((s) => s.shelters);
   const infrastructure = useSimulationStore((s) => s.infrastructure);
+  const draftMission = useSimulationStore((s) => s.draftMission);
+  const proposedMission = useSimulationStore((s) => s.proposedMission);
+  const setDraftMission = useSimulationStore((s) => s.setDraftMission);
 
   /* ── Initialize Map ── */
   useEffect(() => {
@@ -202,17 +262,32 @@ export const Interactive3DMap: React.FC = () => {
         sources: {
           osm: {
             type: 'raster',
-            tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tiles: ['https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'],
             tileSize: 256,
-            attribution: '&copy; OpenStreetMap Contributors',
+            attribution: '&copy; Google Maps',
           },
           buildings: { type: 'geojson', data: MOCK_BUILDINGS },
           flood: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
           vehicles: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
           routes: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+          'proposed-routes': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
           'road-network': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
           'safe-zones': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+          'mission-markers': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
           markers: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+          terrain: {
+            type: 'raster-dem',
+            tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+            encoding: 'terrarium',
+            tileSize: 256,
+          },
+        },
+        terrain: { source: 'terrain', exaggeration: 2.0 },
+        light: {
+          anchor: 'map',
+          color: '#ffffff',
+          intensity: 0.4,
+          position: [1.15, 210, 30]
         },
         layers: [
           {
@@ -225,18 +300,40 @@ export const Interactive3DMap: React.FC = () => {
               'raster-contrast': 0.18,
             },
           },
+          // Safe Zones (pulsing/glowing effect using circles)
+          {
+            id: 'safe-zones-pulse',
+            source: 'safe-zones',
+            type: 'circle',
+            paint: {
+              'circle-radius': 30,
+              'circle-color': '#10B981',
+              'circle-opacity': 0.15,
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#10B981',
+              'circle-stroke-opacity': 0.5,
+              'circle-pitch-alignment': 'map',
+            }
+          },
+          {
+            id: 'safe-zones-core',
+            source: 'safe-zones',
+            type: 'circle',
+            paint: {
+              'circle-radius': 8,
+              'circle-color': '#10B981',
+              'circle-opacity': 0.9,
+              'circle-stroke-width': 3,
+              'circle-stroke-color': '#065F46',
+            }
+          },
           // 3D Buildings
           {
             id: '3d-buildings',
             source: 'buildings',
             type: 'fill-extrusion',
             paint: {
-              'fill-extrusion-color': [
-                'interpolate', ['linear'], ['get', 'height'],
-                0, '#171B22',
-                150, '#1C2029',
-                300, '#252A35',
-              ],
+              'fill-extrusion-color': ['get', 'color'],
               'fill-extrusion-height': ['get', 'height'],
               'fill-extrusion-base': ['get', 'base_height'],
               'fill-extrusion-opacity': 0.88,
@@ -260,21 +357,19 @@ export const Interactive3DMap: React.FC = () => {
               'line-opacity': 0.7,
             },
           },
-          // Flood zones (3D extrusion for water depth)
+          // Flood zones (terrain conforming fill)
           {
-            id: 'flood-layer',
+            id: 'flood-zones-layer',
             source: 'flood',
-            type: 'fill-extrusion',
+            type: 'fill',
             paint: {
-              'fill-extrusion-color': [
+              'fill-color': [
                 'interpolate', ['linear'], ['get', 'depth'],
-                0, '#3B82F6',
-                2, '#F59E0B',
-                4, '#EF4444',
+                0.5, 'rgba(59, 130, 246, 0.4)',
+                2.0, 'rgba(37, 99, 235, 0.6)',
+                4.0, 'rgba(30, 58, 138, 0.85)'
               ],
-              'fill-extrusion-height': ['*', ['get', 'depth'], 25],
-              'fill-extrusion-base': 0,
-              'fill-extrusion-opacity': 0.5,
+              'fill-outline-color': 'rgba(30, 58, 138, 1.0)',
             },
           },
           // Routes (dashed lines)
@@ -289,29 +384,34 @@ export const Interactive3DMap: React.FC = () => {
               'line-opacity': 0.8,
             },
           },
-          // Vehicle markers (circles)
+          // Proposed Route
+          {
+            id: 'proposed-routes-layer',
+            source: 'proposed-routes',
+            type: 'line',
+            paint: {
+              'line-color': '#F59E0B',
+              'line-width': 3,
+              'line-dasharray': [1, 2],
+              'line-opacity': 0.9,
+            },
+          },
+          // Vehicle markers (icons)
           {
             id: 'vehicles-layer',
             source: 'vehicles',
-            type: 'circle',
-            paint: {
-              'circle-radius': [
-                'match', ['get', 'type'],
-                'drone', 5,
-                'command', 8,
-                6,
-              ],
-              'circle-color': [
-                'match', ['get', 'status'],
-                'en_route', '#06B6D4',
-                'on_scene', '#10B981',
-                'returning', '#F59E0B',
-                '#64748B',
-              ],
-              'circle-stroke-width': 2,
-              'circle-stroke-color': '#0B0D11',
-              'circle-opacity': 0.95,
+            type: 'symbol',
+            layout: {
+              'icon-image': ['get', 'type'],
+              'icon-size': 1.2,
+              'icon-rotate': ['get', 'heading'],
+              'icon-allow-overlap': true,
+              'icon-ignore-placement': true,
+              'icon-pitch-alignment': 'map'
             },
+            paint: {
+              'icon-opacity': 1.0,
+            }
           },
           // Vehicle labels
           {
@@ -384,6 +484,40 @@ export const Interactive3DMap: React.FC = () => {
               'text-halo-width': 1.2,
             },
           },
+          // Mission planning markers (origin=blue, destination=red)
+          {
+            id: 'mission-markers-layer',
+            source: 'mission-markers',
+            type: 'circle',
+            paint: {
+              'circle-radius': 10,
+              'circle-color': [
+                'match', ['get', 'role'],
+                'origin', '#3B82F6',
+                'destination', '#EF4444',
+                '#64748B',
+              ],
+              'circle-stroke-width': 3,
+              'circle-stroke-color': '#0B0D11',
+              'circle-opacity': 0.95,
+            },
+          },
+          {
+            id: 'mission-markers-label',
+            source: 'mission-markers',
+            type: 'symbol',
+            layout: {
+              'text-field': ['match', ['get', 'role'], 'origin', 'ORIGIN', 'destination', 'DEST', ''],
+              'text-size': 10,
+              'text-offset': [0, -1.5],
+              'text-font': ['Open Sans Regular'],
+            },
+            paint: {
+              'text-color': '#F1F5F9',
+              'text-halo-color': '#0B0D11',
+              'text-halo-width': 1.5,
+            },
+          },
         ],
       },
       center: [viewState.longitude, viewState.latitude],
@@ -397,6 +531,10 @@ export const Interactive3DMap: React.FC = () => {
       new maplibregl.NavigationControl({ showCompass: true }),
       'bottom-right',
     );
+
+    map.current.on('style.load', () => {
+      loadMapIcons(map.current!);
+    });
 
     map.current.on('load', () => {
       setMapReady(true);
@@ -413,12 +551,8 @@ export const Interactive3DMap: React.FC = () => {
         map.current.getCanvas().style.cursor = 'pointer';
         
         const feature = e.features[0];
-        const coords = feature.geometry.coordinates.slice();
         const props = feature.properties;
-        
-        while (Math.abs(e.lngLat.lng - coords[0]) > 180) {
-          coords[0] += e.lngLat.lng > coords[0] ? 360 : -360;
-        }
+        const coords = [e.lngLat.lng, e.lngLat.lat] as [number, number];
         
         let html = '';
         if (feature.layer.id === 'vehicles-layer') {
@@ -453,6 +587,73 @@ export const Interactive3DMap: React.FC = () => {
       map.current.on('mouseleave', 'vehicles-layer', handleMouseLeave);
       map.current.on('mouseenter', 'markers-layer', handleMouseEnter);
       map.current.on('mouseleave', 'markers-layer', handleMouseLeave);
+      map.current.on('mouseenter', 'road-network-layer', handleMouseEnter);
+      map.current.on('mouseleave', 'road-network-layer', handleMouseLeave);
+
+      map.current.on('click', (e) => {
+        if (!map.current) return;
+        
+        // --- MISSION PLANNING CLICK MODE ---
+        const store = useSimulationStore.getState();
+        const draft = store.draftMission;
+        if (draft.type) {
+          const clickedCoord: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+          if (!draft.origin) {
+            store.setDraftMission({ origin: clickedCoord });
+            return;
+          }
+          if (!draft.destination) {
+            store.setDraftMission({ destination: clickedCoord });
+            store.sendCommand('plan_mission', {
+              origin: draft.origin,
+              destination: clickedCoord,
+              type: draft.type
+            });
+            return;
+          }
+          // Both set — ignore further clicks until dispatch/reset
+          return;
+        }
+        // --- END MISSION PLANNING ---
+
+        const features = map.current.queryRenderedFeatures(e.point, {
+          layers: ['vehicles-layer', 'markers-layer', 'road-network-layer', '3d-buildings']
+        });
+
+        if (features.length > 0) {
+          const feature = features[0];
+          const layerId = feature.layer.id;
+          let type: 'flood' | 'road' | 'vehicle' | 'shelter' | 'infrastructure' | null = null;
+          
+          if (layerId === 'vehicles-layer') type = 'vehicle';
+          else if (layerId === 'road-network-layer') type = 'road';
+          else if (layerId === 'markers-layer') type = 'infrastructure';
+          else if (layerId === '3d-buildings' && feature.properties?.type && feature.properties.type !== 'standard') type = 'infrastructure';
+          
+          const id = feature.properties?.id;
+          
+          if (type && id) {
+            useSimulationStore.getState().setSelectedEntity({ type, id });
+            
+            let coords = null;
+            if (feature.geometry.type === 'Point') {
+              coords = feature.geometry.coordinates as [number, number];
+            } else if (feature.geometry.type === 'LineString') {
+              coords = feature.geometry.coordinates[Math.floor(feature.geometry.coordinates.length / 2)] as [number, number];
+            } else if (feature.geometry.type === 'Polygon') {
+              coords = feature.geometry.coordinates[0][0] as [number, number];
+            }
+            
+            if (coords) {
+              map.current.flyTo({ center: coords, zoom: 15, pitch: 60, speed: 1.2, curve: 1.42, essential: true });
+            }
+          } else {
+            useSimulationStore.getState().setSelectedEntity(null);
+          }
+        } else {
+          useSimulationStore.getState().setSelectedEntity(null);
+        }
+      });
     });
 
     map.current.on('moveend', () => {
@@ -501,7 +702,14 @@ export const Interactive3DMap: React.FC = () => {
     // Update markers
     const markerSrc = m.getSource('markers') as maplibregl.GeoJSONSource | undefined;
     if (markerSrc) markerSrc.setData(buildMarkerGeoJSON(shelters, infrastructure));
-  }, [mapReady, floodCells, vehicles, roads, shelters, infrastructure]);
+
+    // Update mission planning markers and proposed routes
+    const missionMarkerSrc = m.getSource('mission-markers') as maplibregl.GeoJSONSource | undefined;
+    if (missionMarkerSrc) missionMarkerSrc.setData(buildMissionMarkerGeoJSON(draftMission, proposedMission));
+    
+    const proposedRouteSrc = m.getSource('proposed-routes') as maplibregl.GeoJSONSource | undefined;
+    if (proposedRouteSrc) proposedRouteSrc.setData(buildProposedRouteGeoJSON(proposedMission));
+  }, [mapReady, floodCells, vehicles, roads, shelters, infrastructure, draftMission, proposedMission]);
 
   useEffect(() => {
     updateMapData();
@@ -646,8 +854,6 @@ export const Interactive3DMap: React.FC = () => {
         &nbsp;|&nbsp; Pitch {viewState.pitch.toFixed(0)}°
       </div>
 
-      {/* ── Simulation Control Panel ── */}
-      <SimulationPanel />
     </div>
   );
 };

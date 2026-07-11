@@ -9,12 +9,10 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "DELUGE — Flood Intelligence & Evacuation System",
+  title: "DELUGE | Incident Command System",
   description:
     "Real-time flood emergency decision-support platform for emergency operations centers.",
 };
-
-import { CommandCenterLayout } from "@/components/layout/CommandCenterLayout";
 
 export default function RootLayout({
   children,
@@ -24,9 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={poppins.variable}>
       <body>
-        <CommandCenterLayout>
-          {children}
-        </CommandCenterLayout>
+        {children}
       </body>
     </html>
   );

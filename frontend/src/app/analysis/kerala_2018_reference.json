@@ -1,0 +1,27 @@
+{
+  "rainfall": {
+    "august_1_8": "258 mm",
+    "august_9_15": "802 mm (Excess: 250%)",
+    "total_august": "1000+ mm"
+  },
+  "affected_districts": [
+    "Ernakulam",
+    "Idukki",
+    "Pathanamthitta",
+    "Alappuzha",
+    "Thrissur",
+    "Wayanad",
+    "Kozhikode"
+  ],
+  "dam_releases": [
+    { "name": "Idukki", "status": "All 5 shutters opened (First time in history)" },
+    { "name": "Mullaperiyar", "status": "Opened at 142 ft" },
+    { "name": "Idamalayar", "status": "Opened" },
+    { "name": "Banasure Sagar", "status": "Opened" }
+  ],
+  "impact": {
+    "displaced": "1.4 Million",
+    "relief_camps": "3,274",
+    "airport": "CIAL (Cochin International Airport) closed for 14 days"
+  }
+}

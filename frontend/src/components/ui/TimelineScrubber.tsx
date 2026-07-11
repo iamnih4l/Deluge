@@ -1,10 +1,14 @@
 "use client";
 
 import React, { useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSimulationStore } from '@/simulation';
-import { Play, Pause, RotateCcw, FastForward } from 'lucide-react';
+import { Play, Pause, RotateCcw, FastForward, AlertTriangle } from 'lucide-react';
 
 export const TimelineScrubber: React.FC = () => {
+  const searchParams = useSearchParams();
+  const isReplayMode = searchParams?.get('mode') === 'replay';
+  
   const {
     time: simulationTime,
     isRunning: isSimulationRunning,
@@ -96,6 +100,51 @@ export const TimelineScrubber: React.FC = () => {
       : 'var(--color-primary-blue)';
 
   return (
+    <>
+      {isReplayMode && !isSimulationRunning && simulationTime < 100 && (
+        <div style={{
+          position: 'absolute',
+          top: '-50px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'rgba(220, 38, 38, 0.9)',
+          color: 'white',
+          padding: '8px 24px',
+          borderRadius: 'var(--radius-lg)',
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+          animation: 'pulse 2s infinite',
+          zIndex: 1000
+        }}>
+          <AlertTriangle size={18} />
+          HISTORICAL REPLAY READY - CLICK PLAY TO START
+        </div>
+      )}
+      {isReplayMode && isSimulationRunning && (
+        <div style={{
+          position: 'absolute',
+          top: '-40px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'rgba(5, 150, 105, 0.9)',
+          color: 'white',
+          padding: '4px 16px',
+          borderRadius: 'var(--radius-md)',
+          fontWeight: 600,
+          fontSize: '0.8rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          zIndex: 1000
+        }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#34D399', animation: 'pulse 1s infinite' }} />
+          REPLAY IN PROGRESS
+        </div>
+      )}
     <div
       style={{
         width: '100%',
@@ -107,7 +156,7 @@ export const TimelineScrubber: React.FC = () => {
       {/* Play/Pause Button */}
       <button
         onClick={handlePlayPause}
-        aria-label={isSimulationRunning ? 'Pause simulation' : 'Start simulation'}
+        aria-label={isSimulationRunning ? 'Pause feed' : 'Start replay'}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -131,18 +180,18 @@ export const TimelineScrubber: React.FC = () => {
         }}
       >
         {isSimulationRunning ? (
-          <><Pause size={14} /> PAUSE</>
+          <><Pause size={14} /> PAUSE FEED</>
         ) : simulationTime >= 100 ? (
-          <><RotateCcw size={14} /> RESTART</>
+          <><RotateCcw size={14} /> RESET EVENT LOG</>
         ) : (
-          <><Play size={14} /> SIMULATE</>
+          <><Play size={14} /> START REPLAY</>
         )}
       </button>
 
       {/* Speed Control */}
       <button
         onClick={cycleSpeed}
-        aria-label={`Simulation speed: ${speed}x`}
+        aria-label={`Replay speed: ${speed}x`}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -187,7 +236,7 @@ export const TimelineScrubber: React.FC = () => {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(simulationTime)}
-        aria-label="Simulation timeline"
+        aria-label="Event timeline"
         tabIndex={0}
         style={{
           flex: 1,
@@ -282,5 +331,6 @@ export const TimelineScrubber: React.FC = () => {
         {severity === 'critical' ? 'CRITICAL' : severity === 'elevated' ? 'ELEVATED' : 'NOMINAL'}
       </div>
     </div>
+    </>
   );
 };

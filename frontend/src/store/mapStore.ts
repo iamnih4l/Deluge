@@ -19,11 +19,11 @@ interface MapStore {
 
 export const useMapStore = create<MapStore>((set) => ({
   viewState: {
-    longitude: -74.0060,
-    latitude: 40.7128,
-    zoom: 15,
-    pitch: 60,
-    bearing: -20,
+    longitude: 78.9629,
+    latitude: 20.5937,
+    zoom: 4,
+    pitch: 0,
+    bearing: 0,
   },
   setViewState: (viewState) => set({ viewState }),
 

@@ -71,13 +71,13 @@ export const CommandPalette: React.FC = () => {
       { id: 'nav-units', label: 'Go to Units', category: 'Navigation', icon: Crosshair, shortcut: '6', action: () => router.push('/units') },
       { id: 'nav-settings', label: 'Go to Settings', category: 'Navigation', icon: Settings, action: () => router.push('/settings') },
 
-      // Simulation
-      { id: 'sim-play', label: isRunning ? 'Pause Simulation' : 'Start Simulation', category: 'Simulation', icon: isRunning ? Pause : Play, shortcut: 'Space', action: () => setRunning(!isRunning) },
-      { id: 'sim-reset', label: 'Reset Simulation', category: 'Simulation', icon: RotateCcw, action: () => reset() },
-      { id: 'sim-speed-1', label: 'Speed: 1×', category: 'Simulation', icon: FastForward, action: () => setSpeed(1) },
-      { id: 'sim-speed-2', label: 'Speed: 2×', category: 'Simulation', icon: FastForward, action: () => setSpeed(2) },
-      { id: 'sim-speed-4', label: 'Speed: 4×', category: 'Simulation', icon: FastForward, action: () => setSpeed(4) },
-      { id: 'sim-speed-8', label: 'Speed: 8×', category: 'Simulation', icon: FastForward, action: () => setSpeed(8) },
+      // Feed
+      { id: 'sim-play', label: isRunning ? 'Pause Feed' : 'Start Replay', category: 'Event Feed', icon: isRunning ? Pause : Play, shortcut: 'Space', action: () => setRunning(!isRunning) },
+      { id: 'sim-reset', label: 'Reset Event Log', category: 'Event Feed', icon: RotateCcw, action: () => reset() },
+      { id: 'sim-speed-1', label: 'Speed: 1×', category: 'Event Feed', icon: FastForward, action: () => setSpeed(1) },
+      { id: 'sim-speed-2', label: 'Speed: 2×', category: 'Event Feed', icon: FastForward, action: () => setSpeed(2) },
+      { id: 'sim-speed-4', label: 'Speed: 4×', category: 'Event Feed', icon: FastForward, action: () => setSpeed(4) },
+      { id: 'sim-speed-8', label: 'Speed: 8×', category: 'Event Feed', icon: FastForward, action: () => setSpeed(8) },
 
       // Actions
       {

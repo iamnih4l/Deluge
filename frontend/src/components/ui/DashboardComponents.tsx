@@ -53,11 +53,15 @@ export function IntelCard({
   title,
   body,
   timestamp,
+  onApprove,
+  onDismiss,
 }: {
   type: 'recommendation' | 'alert' | 'update';
   title: string;
   body: string;
   timestamp: string;
+  onApprove?: () => void;
+  onDismiss?: () => void;
 }) {
   const configs = {
     recommendation: {
@@ -147,6 +151,7 @@ export function IntelCard({
       {type === 'recommendation' && (
         <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
           <button
+            onClick={onApprove}
             style={{
               flex: 1,
               padding: '7px',
@@ -163,6 +168,7 @@ export function IntelCard({
             APPROVE
           </button>
           <button
+            onClick={onDismiss}
             style={{
               flex: 1,
               padding: '7px',

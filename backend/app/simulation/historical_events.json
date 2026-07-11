@@ -1,0 +1,158 @@
+[
+  {
+    "timestamp_minutes": 2,
+    "event_type": "flood_initiated",
+    "payload": {
+      "id": "flood-periyar-overflow",
+      "center": [76.3200, 10.0300],
+      "maxRadius": 800.0,
+      "growthRate": 0.08,
+      "severity": "critical"
+    }
+  },
+  {
+    "timestamp_minutes": 5,
+    "event_type": "dispatch_mission",
+    "payload": {
+      "id": "mission-hist-01",
+      "title": "Evacuate Edappally School",
+      "origin": [76.3000, 9.9950],
+      "destination": [76.3150, 10.0280],
+      "vehicle_callsign": "AMB-101",
+      "vehicle_type": "ground_unit"
+    }
+  },
+  {
+    "timestamp_minutes": 10,
+    "event_type": "flood_initiated",
+    "payload": {
+      "id": "flood-edappally-junction",
+      "center": [76.3080, 10.0220],
+      "maxRadius": 600.0,
+      "growthRate": 0.06,
+      "severity": "elevated"
+    }
+  },
+  {
+    "timestamp_minutes": 12,
+    "event_type": "ai_recommendation",
+    "payload": {
+      "title": "Recommend Shift of Resources",
+      "body": "Edappally Junction flood risk is escalating rapidly. Recommend deploying a Rescue Boat to evacuate critical infrastructure nearby.",
+      "confidence": 0.92,
+      "action": {
+        "type": "dispatch_mission",
+        "payload": {
+          "title": "Emergency Evac: Edappally Junction",
+          "origin": [76.3150, 10.0280],
+          "destination": [76.3080, 10.0220],
+          "type": "rescue_boat"
+        }
+      }
+    }
+  },
+  {
+    "timestamp_minutes": 15,
+    "event_type": "road_closed",
+    "payload": {
+      "name_contains": "NH 66",
+      "reason": "Bridge submerged"
+    }
+  },
+  {
+    "timestamp_minutes": 18,
+    "event_type": "dispatch_mission",
+    "payload": {
+      "id": "mission-hist-02",
+      "title": "Medical Evac — Kaloor",
+      "origin": [76.2900, 10.0000],
+      "destination": [76.2750, 10.0450],
+      "vehicle_callsign": "AMB-102",
+      "vehicle_type": "ground_unit"
+    }
+  },
+  {
+    "timestamp_minutes": 22,
+    "event_type": "flood_initiated",
+    "payload": {
+      "id": "flood-kaloor-lowlands",
+      "center": [76.3050, 10.0050],
+      "maxRadius": 500.0,
+      "growthRate": 0.05,
+      "severity": "elevated"
+    }
+  },
+  {
+    "timestamp_minutes": 28,
+    "event_type": "road_closed",
+    "payload": {
+      "name_contains": "Seaport Airport Road",
+      "reason": "Waterlogging"
+    }
+  },
+  {
+    "timestamp_minutes": 32,
+    "event_type": "flood_initiated",
+    "payload": {
+      "id": "flood-palarivattom",
+      "center": [76.3200, 10.0100],
+      "maxRadius": 450.0,
+      "growthRate": 0.07,
+      "severity": "critical"
+    }
+  },
+  {
+    "timestamp_minutes": 35,
+    "event_type": "dispatch_mission",
+    "payload": {
+      "id": "mission-hist-03",
+      "title": "Rescue Team — Palarivattom",
+      "origin": [76.3000, 9.9950],
+      "destination": [76.3200, 10.0100],
+      "vehicle_callsign": "RB-201",
+      "vehicle_type": "rescue_boat"
+    }
+  },
+  {
+    "timestamp_minutes": 40,
+    "event_type": "flood_initiated",
+    "payload": {
+      "id": "flood-vyttila",
+      "center": [76.3180, 9.9800],
+      "maxRadius": 700.0,
+      "growthRate": 0.04,
+      "severity": "elevated"
+    }
+  },
+  {
+    "timestamp_minutes": 45,
+    "event_type": "road_closed",
+    "payload": {
+      "name_contains": "MG Road",
+      "reason": "Flooding"
+    }
+  },
+  {
+    "timestamp_minutes": 50,
+    "event_type": "dispatch_mission",
+    "payload": {
+      "id": "mission-hist-04",
+      "title": "Supply Drop — Kaloor Stadium",
+      "origin": [76.2900, 10.0350],
+      "destination": [76.3000, 9.9950],
+      "vehicle_callsign": "ENG-301",
+      "vehicle_type": "ground_unit"
+    }
+  },
+  {
+    "timestamp_minutes": 55,
+    "event_type": "flood_initiated",
+    "payload": {
+      "id": "flood-south-expansion",
+      "center": [76.2950, 10.0180],
+      "maxRadius": 550.0,
+      "growthRate": 0.06,
+      "severity": "critical"
+    }
+  }
+]
