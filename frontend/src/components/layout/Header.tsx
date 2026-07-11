@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { AlertTriangle } from 'lucide-react';
+import { useSimulationStore } from '@/simulation';
+import { AlertTriangle, Radio } from 'lucide-react';
 
 /* ──────────────────────────────────────────
    Live Clock Hook
@@ -18,6 +19,53 @@ function useClock() {
 }
 
 /* ──────────────────────────────────────────
+   Animated Number — counts up/down smoothly
+   ────────────────────────────────────────── */
+function AnimatedNumber({ value, color }: { value: number; color?: string }) {
+  const [display, setDisplay] = useState(value);
+  const prevValue = useRef(value);
+
+  useEffect(() => {
+    if (value === prevValue.current) return;
+
+    const start = prevValue.current;
+    const end = value;
+    const duration = 300;
+    const startTime = performance.now();
+
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(start + (end - start) * eased);
+      setDisplay(current);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    requestAnimationFrame(animate);
+    prevValue.current = value;
+  }, [value]);
+
+  return (
+    <span
+      style={{
+        fontSize: '0.9rem',
+        fontWeight: 600,
+        fontFamily: 'var(--font-mono)',
+        color: color || 'var(--text-primary)',
+        transition: 'color 0.3s ease',
+      }}
+    >
+      {display}
+    </span>
+  );
+}
+
+/* ──────────────────────────────────────────
    Stat Box (for the header)
    ────────────────────────────────────────── */
 function StatBox({
@@ -26,7 +74,7 @@ function StatBox({
   color,
 }: {
   label: string;
-  value: string | number;
+  value: number;
   color?: string;
 }) {
   return (
@@ -42,33 +90,48 @@ function StatBox({
       >
         {label}
       </span>
-      <span
-        style={{
-          fontSize: '0.9rem',
-          fontWeight: 600,
-          fontFamily: 'var(--font-mono)',
-          color: color || 'var(--text-primary)',
-        }}
-      >
-        {value}
-      </span>
+      <AnimatedNumber value={value} color={color} />
     </div>
   );
 }
 
 export const Header: React.FC = () => {
   const clock = useClock();
-  const timeStr = clock ? clock.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }) : '--:--:--';
-  const dateStr = clock ? clock.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  }) : 'Loading...';
+  const timeStr = clock
+    ? clock.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      })
+    : '--:--:--';
+  const dateStr = clock
+    ? clock.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      })
+    : 'Loading...';
+
+  const stats = useSimulationStore((s) => s.stats);
+  const severity = useSimulationStore((s) => s.severity);
+  const alerts = useSimulationStore((s) => s.alerts);
+  const isRunning = useSimulationStore((s) => s.isRunning);
+
+  // Get the most recent unacknowledged alert for the alert strip
+  const latestAlert = alerts.find((a) => !a.acknowledged);
+  const alertColor =
+    latestAlert?.severity === 'critical'
+      ? 'var(--color-critical-red)'
+      : latestAlert?.severity === 'warning'
+      ? 'var(--color-warning-amber)'
+      : 'var(--color-info-cyan)';
+  const alertBg =
+    latestAlert?.severity === 'critical'
+      ? 'var(--color-critical-red-dim)'
+      : latestAlert?.severity === 'warning'
+      ? 'var(--color-warning-amber-dim)'
+      : 'var(--color-info-cyan-dim)';
 
   return (
     <>
@@ -112,7 +175,27 @@ export const Header: React.FC = () => {
           }}
         />
 
-        <StatusBadge status="success">OPERATIONAL</StatusBadge>
+        <StatusBadge
+          status={severity === 'critical' ? 'critical' : severity === 'elevated' ? 'warning' : 'success'}
+        >
+          {severity === 'critical' ? 'CRITICAL' : severity === 'elevated' ? 'ELEVATED' : 'OPERATIONAL'}
+        </StatusBadge>
+
+        {isRunning && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              fontSize: '0.6rem',
+              color: 'var(--color-safe-green)',
+              fontWeight: 500,
+              animation: 'breathe 2s ease-in-out infinite',
+            }}
+          >
+            <Radio size={12} /> LIVE
+          </div>
+        )}
       </div>
 
       {/* Center: Alert Strip */}
@@ -124,30 +207,50 @@ export const Header: React.FC = () => {
           alignItems: 'center',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '5px 14px',
-            borderRadius: '99px',
-            backgroundColor: 'var(--color-warning-amber-dim)',
-            border: '1px solid rgba(245, 158, 11, 0.2)',
-            fontSize: '0.7rem',
-            fontWeight: 500,
-            color: 'var(--color-warning-amber)',
-          }}
-        >
-          <AlertTriangle size={14} style={{ animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
-          FLOOD WARNING — Sector 7 water levels rising
-        </div>
+        {latestAlert && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '5px 14px',
+              borderRadius: '99px',
+              backgroundColor: alertBg,
+              border: `1px solid ${alertColor}20`,
+              fontSize: '0.7rem',
+              fontWeight: 500,
+              color: alertColor,
+              maxWidth: '500px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              animation: 'slide-in-right 0.3s ease',
+            }}
+          >
+            <AlertTriangle
+              size={14}
+              style={{ flexShrink: 0, animation: 'pulse-dot 1.5s ease-in-out infinite' }}
+            />
+            {latestAlert.title} — {latestAlert.body.slice(0, 80)}
+            {latestAlert.body.length > 80 ? '…' : ''}
+          </div>
+        )}
       </div>
 
       {/* Right: Stats + Clock */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-        <StatBox label="Active Units" value="12" />
-        <StatBox label="Open Missions" value="6" color="var(--color-warning-amber)" />
-        <StatBox label="At Risk" value="3" color="var(--color-critical-red)" />
+        <StatBox label="Active Units" value={stats.activeUnits} />
+        <StatBox
+          label="Open Missions"
+          value={stats.openMissions}
+          color="var(--color-warning-amber)"
+        />
+        <StatBox
+          label="At Risk"
+          value={stats.atRisk}
+          color={stats.atRisk > 2 ? 'var(--color-critical-red)' : 'var(--color-warning-amber)'}
+        />
+        <StatBox label="Evacuated" value={stats.evacuated} color="var(--color-safe-green)" />
 
         <div
           style={{

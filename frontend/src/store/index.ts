@@ -1,1 +1,1 @@
-export * from './mapStore';
+export { useMapStore } from './mapStore';

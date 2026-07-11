@@ -1,41 +1,48 @@
 "use client";
 
 import React, { useEffect, useRef, useCallback } from 'react';
-import { useMapStore } from '@/store';
-import { Play, Pause, RotateCcw } from 'lucide-react';
+import { useSimulationStore } from '@/simulation';
+import { Play, Pause, RotateCcw, FastForward } from 'lucide-react';
 
 export const TimelineScrubber: React.FC = () => {
-  const { simulationTime, setSimulationTime, isSimulationRunning, setSimulationRunning } =
-    useMapStore();
-  const playheadRef = useRef<number | null>(null);
+  const {
+    time: simulationTime,
+    isRunning: isSimulationRunning,
+    speed,
+    severity,
+    tick,
+    setRunning,
+    setSpeed,
+    seekTo,
+    reset,
+  } = useSimulationStore();
+
   const trackRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+  const tickInterval = useRef<number | null>(null);
 
-  // Playback Loop
+  // Simulation loop — calls tick() at 100ms intervals
   useEffect(() => {
     if (isSimulationRunning) {
-      playheadRef.current = window.setInterval(() => {
-        useMapStore.setState((state) => {
-          if (state.simulationTime >= 100) {
-            return { isSimulationRunning: false, simulationTime: 100 };
-          }
-          return { simulationTime: state.simulationTime + 0.5 };
-        });
+      tickInterval.current = window.setInterval(() => {
+        tick();
       }, 100);
-    } else if (playheadRef.current) {
-      clearInterval(playheadRef.current);
+    } else if (tickInterval.current) {
+      clearInterval(tickInterval.current);
     }
 
     return () => {
-      if (playheadRef.current) clearInterval(playheadRef.current);
+      if (tickInterval.current) clearInterval(tickInterval.current);
     };
-  }, [isSimulationRunning]);
+  }, [isSimulationRunning, tick]);
 
   const handlePlayPause = () => {
     if (simulationTime >= 100) {
-      setSimulationTime(0);
+      reset();
+      setTimeout(() => setRunning(true), 50);
+      return;
     }
-    setSimulationRunning(!isSimulationRunning);
+    setRunning(!isSimulationRunning);
   };
 
   const scrubTo = useCallback(
@@ -44,14 +51,14 @@ export const TimelineScrubber: React.FC = () => {
       const rect = trackRef.current.getBoundingClientRect();
       const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
       const percentage = (x / rect.width) * 100;
-      setSimulationTime(percentage);
+      seekTo(percentage);
     },
-    [setSimulationTime],
+    [seekTo],
   );
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     isDragging.current = true;
-    setSimulationRunning(false);
+    setRunning(false);
     scrubTo(e.clientX);
 
     const handleMouseMove = (ev: MouseEvent) => {
@@ -66,6 +73,12 @@ export const TimelineScrubber: React.FC = () => {
     window.addEventListener('mouseup', handleMouseUp);
   };
 
+  const cycleSpeed = () => {
+    const speeds = [1, 2, 4, 8];
+    const idx = speeds.indexOf(speed);
+    setSpeed(speeds[(idx + 1) % speeds.length]);
+  };
+
   // Time display
   const totalSimMinutes = 60;
   const currentSimMinutes = ((Number(simulationTime) || 0) / 100) * totalSimMinutes;
@@ -75,13 +88,10 @@ export const TimelineScrubber: React.FC = () => {
     .toString()
     .padStart(2, '0')}`;
 
-  // Severity markers for the track
-  const severity =
-    (simulationTime || 0) > 80 ? 'critical' : (simulationTime || 0) > 50 ? 'warning' : 'normal';
   const progressColor =
     severity === 'critical'
       ? 'var(--color-critical-red)'
-      : severity === 'warning'
+      : severity === 'elevated'
       ? 'var(--color-warning-amber)'
       : 'var(--color-primary-blue)';
 
@@ -91,12 +101,13 @@ export const TimelineScrubber: React.FC = () => {
         width: '100%',
         display: 'flex',
         alignItems: 'center',
-        gap: '16px',
+        gap: '14px',
       }}
     >
       {/* Play/Pause Button */}
       <button
         onClick={handlePlayPause}
+        aria-label={isSimulationRunning ? 'Pause simulation' : 'Start simulation'}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -115,7 +126,7 @@ export const TimelineScrubber: React.FC = () => {
           fontWeight: 600,
           letterSpacing: '0.5px',
           cursor: 'pointer',
-          minWidth: '170px',
+          minWidth: '150px',
           transition: 'all var(--transition-base)',
         }}
       >
@@ -128,8 +139,39 @@ export const TimelineScrubber: React.FC = () => {
         )}
       </button>
 
+      {/* Speed Control */}
+      <button
+        onClick={cycleSpeed}
+        aria-label={`Simulation speed: ${speed}x`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          padding: '8px 12px',
+          backgroundColor: speed > 1 ? 'var(--color-info-cyan-dim)' : 'var(--bg-panel)',
+          border: `1px solid ${speed > 1 ? 'var(--color-info-cyan)' : 'var(--border-slate-gray)'}`,
+          color: speed > 1 ? 'var(--color-info-cyan)' : 'var(--text-secondary)',
+          borderRadius: 'var(--radius-md)',
+          fontSize: '0.7rem',
+          fontWeight: 600,
+          fontFamily: 'var(--font-mono)',
+          cursor: 'pointer',
+          transition: 'all var(--transition-fast)',
+        }}
+      >
+        <FastForward size={12} /> {speed}×
+      </button>
+
       {/* Time tick marks */}
-      <div style={{ display: 'flex', gap: '12px', fontSize: '0.6rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: '12px',
+          fontSize: '0.55rem',
+          color: 'var(--text-tertiary)',
+          fontFamily: 'var(--font-mono)',
+        }}
+      >
         <span>+0m</span>
         <span>+15m</span>
         <span>+30m</span>
@@ -141,9 +183,15 @@ export const TimelineScrubber: React.FC = () => {
       <div
         ref={trackRef}
         onMouseDown={handleMouseDown}
+        role="slider"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(simulationTime)}
+        aria-label="Simulation timeline"
+        tabIndex={0}
         style={{
           flex: 1,
-          height: '24px',
+          height: '28px',
           display: 'flex',
           alignItems: 'center',
           cursor: 'ew-resize',
@@ -200,7 +248,12 @@ export const TimelineScrubber: React.FC = () => {
           fontSize: '0.85rem',
           fontFamily: 'var(--font-mono)',
           fontWeight: 500,
-          color: severity === 'critical' ? 'var(--color-critical-red)' : severity === 'warning' ? 'var(--color-warning-amber)' : 'var(--text-primary)',
+          color:
+            severity === 'critical'
+              ? 'var(--color-critical-red)'
+              : severity === 'elevated'
+              ? 'var(--color-warning-amber)'
+              : 'var(--text-primary)',
           minWidth: '70px',
           textAlign: 'right',
           letterSpacing: '0.5px',
@@ -216,11 +269,17 @@ export const TimelineScrubber: React.FC = () => {
           fontWeight: 600,
           letterSpacing: '1px',
           textTransform: 'uppercase',
-          color: severity === 'critical' ? 'var(--color-critical-red)' : severity === 'warning' ? 'var(--color-warning-amber)' : 'var(--text-tertiary)',
+          color:
+            severity === 'critical'
+              ? 'var(--color-critical-red)'
+              : severity === 'elevated'
+              ? 'var(--color-warning-amber)'
+              : 'var(--text-tertiary)',
           minWidth: '60px',
+          animation: severity === 'critical' ? 'pulse-dot 1.5s ease-in-out infinite' : 'none',
         }}
       >
-        {severity === 'critical' ? 'CRITICAL' : severity === 'warning' ? 'ELEVATED' : 'NOMINAL'}
+        {severity === 'critical' ? 'CRITICAL' : severity === 'elevated' ? 'ELEVATED' : 'NOMINAL'}
       </div>
     </div>
   );
