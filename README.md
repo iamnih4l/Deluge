@@ -228,10 +228,11 @@ Deluge significantly reduces the cognitive load on emergency operators, allowing
 
 ---
 
-## Team
+## Team: LunaX
 
 | Name | Role | GitHub | LinkedIn |
 |------|------|--------|----------|
+| [Name] | [Role] | [@handle](https://github.com/) | [Profile](https://linkedin.com/in/) |
 | [Name] | [Role] | [@handle](https://github.com/) | [Profile](https://linkedin.com/in/) |
 | [Name] | [Role] | [@handle](https://github.com/) | [Profile](https://linkedin.com/in/) |
 | [Name] | [Role] | [@handle](https://github.com/) | [Profile](https://linkedin.com/in/) |
