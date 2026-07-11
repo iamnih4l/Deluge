@@ -6,6 +6,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useMapStore } from '@/store';
 import { useSimulationStore } from '@/simulation';
 import { MOCK_BUILDINGS } from '@/features/map/mockData';
+import { SimulationPanel } from '@/components/ui/SimulationPanel';
 import {
   Building2,
   Waves,
@@ -553,6 +554,9 @@ export const Interactive3DMap: React.FC = () => {
         &nbsp;|&nbsp; Zoom {viewState.zoom.toFixed(1)}
         &nbsp;|&nbsp; Pitch {viewState.pitch.toFixed(0)}°
       </div>
+
+      {/* ── Simulation Control Panel ── */}
+      <SimulationPanel />
     </div>
   );
 };

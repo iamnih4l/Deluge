@@ -1,10 +1,36 @@
 "use client";
 
 import React from 'react';
-import { SectionHeader, InfraRow } from '@/components/ui/DashboardComponents';
-import { Crosshair, Navigation } from 'lucide-react';
+import { SectionHeader } from '@/components/ui/DashboardComponents';
+import { Crosshair, Navigation, Ship, Truck, Command } from 'lucide-react';
+import { useSimulationStore } from '@/simulation';
 
 export default function UnitsPage() {
+  const vehicles = useSimulationStore((s) => s.vehicles);
+
+  const drones = vehicles.filter(v => v.type === 'drone');
+  const rescue = vehicles.filter(v => v.type === 'rescue_boat');
+  const medical = vehicles.filter(v => v.type === 'ambulance');
+  const engineering = vehicles.filter(v => v.type === 'engineering');
+  const command = vehicles.filter(v => v.type === 'command');
+
+  const renderVehicleRow = (v: typeof vehicles[0], Icon: React.ElementType, color: string) => {
+    let statusText = v.status.replace('_', ' ').toUpperCase();
+    if (v.status === 'en_route') statusText = 'EN ROUTE';
+    
+    return (
+      <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', borderBottom: '1px solid var(--border-slate-gray)' }}>
+        <Icon size={18} style={{ color }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 500 }}>{v.callsign}</div>
+          <div style={{ fontSize: '0.65rem', color: v.status === 'idle' ? 'var(--text-tertiary)' : 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+            {statusText} {v.assignedMission ? `· ${v.assignedMission}` : ''}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', borderBottom: '1px solid var(--border-slate-gray)' }}>
@@ -14,30 +40,40 @@ export default function UnitsPage() {
       </div>
 
       <div style={{ padding: '0 12px', overflow: 'auto', flex: 1, paddingTop: '12px' }}>
-        <SectionHeader title="Aerial Drones" />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', borderBottom: '1px solid var(--border-slate-gray)' }}>
-          <Navigation size={18} style={{ color: 'var(--color-primary-blue)' }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '0.78rem', fontWeight: 500 }}>Drone 1 (Recon)</div>
-            <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>Alt: 400ft · Bat: 82%</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', borderBottom: '1px solid var(--border-slate-gray)' }}>
-          <Navigation size={18} style={{ color: 'var(--color-primary-blue)' }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '0.78rem', fontWeight: 500 }}>Drone 2 (Comm)</div>
-            <div style={{ fontSize: '0.65rem', color: 'var(--color-warning-amber)', fontFamily: 'var(--font-mono)' }}>Alt: 200ft · Bat: 18% (RTB)</div>
-          </div>
-        </div>
+        {drones.length > 0 && (
+          <>
+            <SectionHeader title="Aerial Drones" />
+            {drones.map(v => renderVehicleRow(v, Navigation, 'var(--color-primary-blue)'))}
+          </>
+        )}
 
-        <SectionHeader title="Ground Rescue" />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', borderBottom: '1px solid var(--border-slate-gray)' }}>
-          <Crosshair size={18} style={{ color: 'var(--color-safe-green)' }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '0.78rem', fontWeight: 500 }}>Rescue Team Alpha</div>
-            <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>Sector 5 · Engaged</div>
-          </div>
-        </div>
+        {rescue.length > 0 && (
+          <>
+            <SectionHeader title="Marine Rescue" />
+            {rescue.map(v => renderVehicleRow(v, Ship, 'var(--color-info-cyan)'))}
+          </>
+        )}
+
+        {medical.length > 0 && (
+          <>
+            <SectionHeader title="Medical Transport" />
+            {medical.map(v => renderVehicleRow(v, Truck, 'var(--color-safe-green)'))}
+          </>
+        )}
+
+        {engineering.length > 0 && (
+          <>
+            <SectionHeader title="Engineering" />
+            {engineering.map(v => renderVehicleRow(v, Truck, 'var(--color-warning-amber)'))}
+          </>
+        )}
+
+        {command.length > 0 && (
+          <>
+            <SectionHeader title="Command & Control" />
+            {command.map(v => renderVehicleRow(v, Command, 'var(--text-primary)'))}
+          </>
+        )}
 
         <div style={{ height: 16 }} />
       </div>
