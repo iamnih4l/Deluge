@@ -233,8 +233,8 @@ Deluge significantly reduces the cognitive load on emergency operators, allowing
 | Name | Role | GitHub | LinkedIn |
 |------|------|--------|----------|
 | Mohammed Nihal | Lead Architect & AI Engineer | [@iamnih4l](https://github.com/iamnih4l) | [iam-nih4l](https://www.linkedin.com/in/iam-nih4l/) |
-| Mohammed Fazil Nayaz | Documentation | [@MohammedFazilNayaz](https://github.com/MohammedFazilNayaz) | [mohammed-fazil-nayaz](https://www.linkedin.com/in/mohammed-fazil-nayaz-6210a921a) |
-| Noel Mathias | Frontend | [@noelmathias](https://github.com/noelmathias) | [noel-mathias](https://www.linkedin.com/in/noel-mathias-4b7515285) |
+| Mohammed Fazil Nayaz | Technical Writer | [@MohammedFazilNayaz](https://github.com/MohammedFazilNayaz) | [mohammed-fazil-nayaz](https://www.linkedin.com/in/mohammed-fazil-nayaz-6210a921a) |
+| Noel Mathias | Frontend Engineer | [@noelmathias](https://github.com/noelmathias) | [noel-mathias](https://www.linkedin.com/in/noel-mathias-4b7515285) |
 | [Name] | [Role] | [@handle](https://github.com/) | [Profile](https://linkedin.com/in/) |
 
 ---
