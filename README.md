@@ -232,7 +232,7 @@ Deluge significantly reduces the cognitive load on emergency operators, allowing
 
 | Name | Role | GitHub | LinkedIn |
 |------|------|--------|----------|
-| [Name] | [Role] | [@handle](https://github.com/) | [Profile](https://linkedin.com/in/) |
+| Mohammed Nihal | Team Leader (Planning, Architecture, AI/ML, Backend) | [@iamnih4l](https://github.com/iamnih4l) | [iam-nih4l](https://www.linkedin.com/in/iam-nih4l/) |
 | [Name] | [Role] | [@handle](https://github.com/) | [Profile](https://linkedin.com/in/) |
 | [Name] | [Role] | [@handle](https://github.com/) | [Profile](https://linkedin.com/in/) |
 | [Name] | [Role] | [@handle](https://github.com/) | [Profile](https://linkedin.com/in/) |
