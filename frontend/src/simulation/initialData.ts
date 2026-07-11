@@ -24,7 +24,7 @@ export const INITIAL_FLOOD_CELLS: FloodCell[] = [
     maxRadius: 280,
     waterDepth: 0,
     activationTime: 5,
-    growthRate: 0.012,
+    growthRate: 0.025,
     polygon: [],
   },
   {
@@ -33,8 +33,8 @@ export const INITIAL_FLOOD_CELLS: FloodCell[] = [
     currentRadius: 0,
     maxRadius: 200,
     waterDepth: 0,
-    activationTime: 25,
-    growthRate: 0.015,
+    activationTime: 15,
+    growthRate: 0.035,
     polygon: [],
   },
   {
@@ -43,8 +43,8 @@ export const INITIAL_FLOOD_CELLS: FloodCell[] = [
     currentRadius: 0,
     maxRadius: 160,
     waterDepth: 0,
-    activationTime: 50,
-    growthRate: 0.018,
+    activationTime: 30,
+    growthRate: 0.040,
     polygon: [],
   },
 ];
@@ -312,10 +312,18 @@ export const INITIAL_MISSIONS: Mission[] = [
 /* ── Initial Alerts ── */
 export const INITIAL_ALERTS: SimAlert[] = [
   {
+    id: 'alert-init-0',
+    severity: 'critical',
+    title: 'Catastrophic Failure Imminent',
+    body: 'Grid Station Delta offline. Immediate rescue of Hospital patients required before backup generators fail.',
+    timestamp: 0,
+    acknowledged: false,
+  },
+  {
     id: 'alert-init-1',
     severity: 'warning',
     title: 'Flood Warning',
-    body: 'Water levels at East River gauges rising. Sector 7 residential evacuation advisory issued.',
+    body: 'Water levels at East River gauges rising rapidly. Sector 7 residential evacuation advisory issued.',
     timestamp: 0,
     acknowledged: false,
   },
