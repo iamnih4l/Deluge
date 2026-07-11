@@ -125,6 +125,19 @@ function buildRoadGeoJSON(
   };
 }
 
+function buildSafeZoneGeoJSON(
+  shelters: ReturnType<typeof useSimulationStore.getState>['shelters'],
+): GeoJSON.FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: shelters.map((s) => ({
+      type: 'Feature' as const,
+      properties: { id: s.id },
+      geometry: { type: 'Point' as const, coordinates: s.position },
+    })),
+  };
+}
+
 function buildMarkerGeoJSON(
   shelters: ReturnType<typeof useSimulationStore.getState>['shelters'],
   infrastructure: ReturnType<typeof useSimulationStore.getState>['infrastructure'],
@@ -198,6 +211,7 @@ export const Interactive3DMap: React.FC = () => {
           vehicles: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
           routes: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
           'road-network': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+          'safe-zones': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
           markers: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         },
         layers: [
@@ -316,6 +330,24 @@ export const Interactive3DMap: React.FC = () => {
               'text-halo-width': 1.5,
             },
           },
+          // Safe Zones radii
+          {
+            id: 'safe-zones-layer',
+            source: 'safe-zones',
+            type: 'circle',
+            paint: {
+              'circle-radius': [
+                 'interpolate', ['exponential', 2], ['zoom'],
+                 0, 0,
+                 20, 600 // scales visually with zoom
+              ],
+              'circle-color': '#10B981',
+              'circle-opacity': 0.08,
+              'circle-stroke-width': 1.5,
+              'circle-stroke-color': '#10B981',
+              'circle-pitch-alignment': 'map',
+            },
+          },
           // Infrastructure / Shelter markers
           {
             id: 'markers-layer',
@@ -366,7 +398,62 @@ export const Interactive3DMap: React.FC = () => {
       'bottom-right',
     );
 
-    map.current.on('load', () => setMapReady(true));
+    map.current.on('load', () => {
+      setMapReady(true);
+
+      if (!map.current) return;
+      const popup = new maplibregl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        className: 'glass-popup',
+      });
+
+      const handleMouseEnter = (e: any) => {
+        if (!map.current) return;
+        map.current.getCanvas().style.cursor = 'pointer';
+        
+        const feature = e.features[0];
+        const coords = feature.geometry.coordinates.slice();
+        const props = feature.properties;
+        
+        while (Math.abs(e.lngLat.lng - coords[0]) > 180) {
+          coords[0] += e.lngLat.lng > coords[0] ? 360 : -360;
+        }
+        
+        let html = '';
+        if (feature.layer.id === 'vehicles-layer') {
+           html = `
+            <div style="font-family: var(--font-poppins);">
+              <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary);">${props.callsign}</div>
+              <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">Type: ${props.type.replace('_', ' ')}</div>
+              <div style="font-size: 0.75rem; color: var(--color-info-cyan); text-transform: uppercase;">Status: ${props.status.replace('_', ' ')}</div>
+            </div>
+           `;
+        } else if (feature.layer.id === 'markers-layer') {
+           html = `
+            <div style="font-family: var(--font-poppins);">
+              <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary);">${props.name}</div>
+              <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">Type: ${props.markerType.replace('_', ' ')}</div>
+              <div style="font-size: 0.75rem; color: var(--text-primary);">Status: ${props.status.replace('_', ' ')}</div>
+              <div style="font-size: 0.7rem; color: var(--text-tertiary); font-family: var(--font-mono); margin-top: 4px;">${props.detail}</div>
+            </div>
+           `;
+        }
+
+        popup.setLngLat(coords).setHTML(html).addTo(map.current);
+      };
+
+      const handleMouseLeave = () => {
+        if (!map.current) return;
+        map.current.getCanvas().style.cursor = '';
+        popup.remove();
+      };
+
+      map.current.on('mouseenter', 'vehicles-layer', handleMouseEnter);
+      map.current.on('mouseleave', 'vehicles-layer', handleMouseLeave);
+      map.current.on('mouseenter', 'markers-layer', handleMouseEnter);
+      map.current.on('mouseleave', 'markers-layer', handleMouseLeave);
+    });
 
     map.current.on('moveend', () => {
       if (!map.current) return;
@@ -407,6 +494,10 @@ export const Interactive3DMap: React.FC = () => {
     const roadSrc = m.getSource('road-network') as maplibregl.GeoJSONSource | undefined;
     if (roadSrc) roadSrc.setData(buildRoadGeoJSON(roads));
 
+    // Update safe zones
+    const safeZoneSrc = m.getSource('safe-zones') as maplibregl.GeoJSONSource | undefined;
+    if (safeZoneSrc) safeZoneSrc.setData(buildSafeZoneGeoJSON(shelters));
+
     // Update markers
     const markerSrc = m.getSource('markers') as maplibregl.GeoJSONSource | undefined;
     if (markerSrc) markerSrc.setData(buildMarkerGeoJSON(shelters, infrastructure));
@@ -425,7 +516,7 @@ export const Interactive3DMap: React.FC = () => {
       flood: ['flood-layer'],
       vehicles: ['vehicles-layer', 'vehicle-labels'],
       routes: ['routes-layer'],
-      shelters: ['markers-layer', 'marker-labels'],
+      shelters: ['safe-zones-layer', 'markers-layer', 'marker-labels'],
       infrastructure: ['markers-layer', 'marker-labels'],
       roads: ['road-network-layer'],
     };

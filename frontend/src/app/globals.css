@@ -191,6 +191,21 @@ button:active {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+}
+
+/* "?"? Maplibre Popups "?"? */
+.glass-popup .maplibregl-popup-content {
+  background-color: var(--glass-bg-heavy) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  padding: 8px 12px;
+}
+
+.glass-popup .maplibregl-popup-tip {
+  border-top-color: var(--glass-bg-heavy) !important;
+  border-bottom-color: var(--glass-bg-heavy) !important;
 }
