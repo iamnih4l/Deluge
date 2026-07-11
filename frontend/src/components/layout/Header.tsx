@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useSimulationStore } from '@/simulation';
 import { AlertTriangle, Radio } from 'lucide-react';
+import styles from './Header.module.css';
 
 /* ──────────────────────────────────────────
    Live Clock Hook
@@ -134,9 +135,9 @@ export const Header: React.FC = () => {
       : 'var(--color-info-cyan-dim)';
 
   return (
-    <>
+    <div className={styles.headerContainer}>
       {/* Left: Brand */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      <div className={styles.brandSection}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div
             style={{
@@ -199,14 +200,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Center: Alert Strip */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
+      <div className={styles.alertSection}>
         {latestAlert && (
           <div
             style={{
@@ -238,7 +232,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Right: Stats + Clock */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+      <div className={styles.statsSection}>
         <StatBox label="Active Units" value={stats.activeUnits} />
         <StatBox
           label="Open Missions"
@@ -283,6 +277,6 @@ export const Header: React.FC = () => {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };

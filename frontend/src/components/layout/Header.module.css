@@ -1,0 +1,35 @@
+.headerContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.brandSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.alertSection {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.statsSection {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .alertSection {
+    display: none; /* Hide alert strip on small screens to save space */
+  }
+  
+  .statsSection {
+    display: none; /* Hide stats on mobile (can be moved to a drawer later if needed) */
+  }
+}
