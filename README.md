@@ -12,6 +12,16 @@ During a flood disaster, conditions evolve rapidly and unpredictably. Traditiona
 
 ---
 
+## Stakeholder Pain Points & Business Value
+
+Based on operational analyses from FEMA and disaster logistics teams, emergency operations fail primarily due to three factors, all of which Deluge solves:
+
+1. **The "Last Mile" Logistics Failure**: Infrastructure fails unpredictably. Traditional routing systems aren't built for dynamic environments, resulting in responders driving into impassable hazards. **Deluge solves this** via sub-second graph recalculation—when a road floods, the system instantly reroutes all affected units.
+2. **Data Overload & Lack of a Common Operating Picture (COP)**: EOC operators are bombarded with scattered information, leading to cognitive overload. **Deluge solves this** by rendering a single, real-time tactical map that aggregates flood data, mission status, and resource tracking into one view.
+3. **Software Abandonment Under Pressure**: Complex software is abandoned during a crisis because responders lack the mental bandwidth to navigate dense menus. **Deluge solves this** with its "Calm Under Chaos" UI, which prioritizes actionable intelligence (e.g., "Reroute Unit A to avoid flooding") over decorative metrics.
+
+---
+
 ## Solution Overview
 
 Deluge is designed specifically for emergency operations centers (EOCs) working under extreme pressure. It replaces disconnected data feeds with a unified, real-time tactical map. Deluge maintains a dynamic, in-memory road network that recalculates optimal routes, safe zones, and mission priorities instantly as flood data updates. Unlike conventional routing systems, Deluge prioritizes operational decision-making, speed, and safety over feature bloat.
