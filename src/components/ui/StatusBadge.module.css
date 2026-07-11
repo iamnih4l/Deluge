@@ -1,0 +1,57 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.success {
+  background-color: var(--color-safe-green-dim);
+  color: var(--color-safe-green);
+}
+
+.success .dot {
+  background-color: var(--color-safe-green);
+}
+
+.warning {
+  background-color: var(--color-warning-amber-dim);
+  color: var(--color-warning-amber);
+}
+
+.warning .dot {
+  background-color: var(--color-warning-amber);
+}
+
+.critical {
+  background-color: var(--color-critical-red-dim);
+  color: var(--color-critical-red);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.critical .dot {
+  background-color: var(--color-critical-red);
+}
+
+.info {
+  background-color: var(--color-primary-blue-dim);
+  color: var(--color-primary-blue);
+}
+
+.info .dot {
+  background-color: var(--color-primary-blue);
+}
