@@ -18,15 +18,17 @@ export const MissionPlanner: React.FC = () => {
 
   const activeMissions = missions.filter((m) => m.status !== 'complete');
   
-  const canDispatch = draftMission.type && proposedMission?.snappedOrigin && proposedMission?.snappedDestination;
+  const canDispatch = Boolean(
+    draftMission.type && draftMission.origin && draftMission.destination
+  );
 
   const handleDispatch = () => {
-    if (!canDispatch) return;
+    if (!canDispatch || !draftMission.origin || !draftMission.destination || !draftMission.type) return;
     
     sendCommand('dispatch_mission', {
       type: draftMission.type,
-      origin: proposedMission.snappedOrigin,
-      destination: proposedMission.snappedDestination
+      origin: proposedMission?.snappedOrigin ?? draftMission.origin,
+      destination: proposedMission?.snappedDestination ?? draftMission.destination,
     });
     
     // Reset draft and proposed

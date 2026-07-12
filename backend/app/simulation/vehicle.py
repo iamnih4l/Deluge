@@ -1,10 +1,14 @@
 import math
 import logging
+import time
 from typing import List
 from app.schemas.simulation import Vehicle, LngLat
 from app.simulation.flood import is_point_flooded
 
 logger = logging.getLogger(__name__)
+
+# Track last reroute attempt time (real time) to prevent stuttering infinite loops
+LAST_REROUTE_TIME: dict[str, float] = {}
 
 def lerp(a: LngLat, b: LngLat, t: float) -> LngLat:
     return (
@@ -41,29 +45,46 @@ def tick_vehicles(vehicles: List[Vehicle], routing_engine=None, roads=None, floo
         # --- DYNAMIC REROUTING ---
         # Check if any remaining route point is inside a flood cell
         if routing_engine and flood_cells and len(flood_cells) > 0:
-            route_obstructed = False
-            # Sample every 3rd point ahead for performance
-            for i in range(seg_index + 1, len(vehicle.route), 3):
-                pt = vehicle.route[i]
-                if is_point_flooded(pt, flood_cells):
-                    route_obstructed = True
-                    break
-                    
-            if route_obstructed:
-                logger.info(f"Vehicle {vehicle.callsign} path obstructed by flood. Rerouting...")
-                try:
-                    destination = vehicle.route[-1]
-                    new_route = routing_engine.calculate_route(vehicle.position, destination)
-                    if new_route and len(new_route) > 1:
-                        vehicle.route = new_route
-                        vehicle.routeProgress = 0.0
-                        next_progress = vehicle.speed * 0.1
-                        seg_index = 0
-                        logger.info(f"Vehicle {vehicle.callsign} rerouted with {len(new_route)} nodes.")
-                    else:
-                        logger.warning(f"Vehicle {vehicle.callsign} rerouting returned no valid path.")
-                except Exception as e:
-                    logger.error(f"Rerouting failed for {vehicle.callsign}: {e}")
+            now = time.time()
+            if now - LAST_REROUTE_TIME.get(vehicle.id, 0) > 2.0:
+                route_obstructed = False
+                # Sample every 3rd point ahead for performance
+                for i in range(seg_index + 1, len(vehicle.route), 3):
+                    pt = vehicle.route[i]
+                    if is_point_flooded(pt, flood_cells):
+                        route_obstructed = True
+                        break
+                        
+                if route_obstructed:
+                    LAST_REROUTE_TIME[vehicle.id] = now
+                    logger.info(f"Vehicle {vehicle.callsign} path obstructed by flood. Rerouting...")
+                    try:
+                        destination = vehicle.route[-1]
+                        
+                        # Use the next valid node on the current path as origin to prevent snapping backwards
+                        # If we are almost at the end of the segment, use to_pt, else fr_pt
+                        if next_progress - seg_index > 0.5 and seg_index + 1 < len(vehicle.route):
+                            origin_pt = vehicle.route[seg_index + 1]
+                        else:
+                            origin_pt = vehicle.route[seg_index]
+                            
+                        new_route = routing_engine.calculate_route(origin_pt, destination)
+                        if new_route and len(new_route) > 1:
+                            # Prepend the current exact position to ensure smooth transition
+                            new_route.insert(0, vehicle.position)
+                            
+                            vehicle.route = new_route
+                            vehicle.routeProgress = 0.0
+                            next_progress = vehicle.speed * 0.1
+                            seg_index = 0
+                            logger.info(f"Vehicle {vehicle.callsign} rerouted with {len(new_route)} nodes.")
+                        else:
+                            logger.warning(f"Vehicle {vehicle.callsign} rerouting returned no valid path.")
+                            vehicle.route = []
+                            vehicle.routeProgress = 0.0
+                            vehicle.status = 'idle'
+                    except Exception as e:
+                        logger.error(f"Rerouting failed for {vehicle.callsign}: {e}")
         # ---
         
         seg_fraction = next_progress - seg_index

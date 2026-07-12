@@ -54,8 +54,11 @@ def extract_road_segments(G: nx.MultiDiGraph) -> list:
         
         path = []
         if 'geometry' in data:
-            # shapely LineString
-            path = [(lon, lat) for lon, lat in data['geometry'].coords]
+            geom = data['geometry']
+            if isinstance(geom, str):
+                import shapely.wkt
+                geom = shapely.wkt.loads(geom)
+            path = [(lon, lat) for lon, lat in geom.coords]
         else:
             node_u = G.nodes[u]
             node_v = G.nodes[v]

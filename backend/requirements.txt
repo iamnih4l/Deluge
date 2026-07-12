@@ -8,3 +8,4 @@ shapely
 rasterio
 websockets
 osmnx
+scikit-learn

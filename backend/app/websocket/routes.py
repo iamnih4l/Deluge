@@ -18,13 +18,18 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-        await websocket.send_json({"type": "FULL_STATE", "payload": sim_state.get_state().dict()})
+        state_dict = sim_state.get_state().model_dump()
+        if "roads" in state_dict:
+            road_statuses = {r["id"]: r["status"] for r in state_dict["roads"] if r["status"] != "open"}
+            state_dict["roadStatuses"] = road_statuses
+            del state_dict["roads"]
+        await websocket.send_json({"type": "FULL_STATE", "payload": state_dict})
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
 
     async def broadcast_state(self):
-        state_dict = sim_state.get_state().dict()
+        state_dict = sim_state.get_state().model_dump()
         if "roads" in state_dict:
             road_statuses = {r["id"]: r["status"] for r in state_dict["roads"] if r["status"] != "open"}
             state_dict["roadStatuses"] = road_statuses
@@ -37,6 +42,21 @@ class ConnectionManager:
                 pass
 
 manager = ConnectionManager()
+
+def _normalize_lnglat(value) -> tuple[float, float]:
+    coords = tuple(value) if isinstance(value, list) else value
+    return (float(coords[0]), float(coords[1]))
+
+
+
+def _calculate_route(origin: tuple[float, float], destination: tuple[float, float]) -> list[tuple[float, float]]:
+    if not simulation_engine.routing_engine:
+        return []
+
+    route = simulation_engine.routing_engine.calculate_route(origin, destination)
+    if not route or len(route) < 2:
+        return []
+    return route
 
 def handle_dispatch_mission(data: dict):
     """
@@ -54,8 +74,8 @@ def handle_dispatch_mission(data: dict):
         return
     
     # Ensure origin/destination are tuples
-    origin = tuple(origin) if isinstance(origin, list) else origin
-    destination = tuple(destination) if isinstance(destination, list) else destination
+    origin = _normalize_lnglat(origin)
+    destination = _normalize_lnglat(destination)
     
     mission_id = f"mission-{uuid.uuid4().hex[:8]}"
     callsign_map = {
@@ -70,13 +90,20 @@ def handle_dispatch_mission(data: dict):
     callsign = f"{prefix}-{len(state.vehicles) + 1:03d}"
     
     # Calculate route using the routing engine
-    route = []
-    if simulation_engine.routing_engine:
-        route = simulation_engine.routing_engine.calculate_route(origin, destination)
+    route = _calculate_route(origin, destination)
     
-    if not route or len(route) < 2:
-        route = [origin, destination]
-        logger.warning(f"dispatch_mission: routing failed, using straight line fallback")
+    if not route:
+        logger.warning("dispatch_mission: routing failed, aborting dispatch")
+        state.alerts.insert(0, SimAlert(
+            id=str(uuid.uuid4()),
+            severity="critical",
+            title="Dispatch Failed",
+            body=f"Cannot route to {destination}. Area may be disconnected by floods.",
+            timestamp=state.time,
+            acknowledged=False
+        ))
+        sim_state.update_state(state)
+        return
     
     # Estimate ETA based on route length (rough: count nodes * speed factor)
     eta_minutes = max(1.0, len(route) * 0.5)
@@ -123,30 +150,62 @@ def handle_dispatch_mission(data: dict):
     sim_state.update_state(state)
     logger.info(f"Dispatched {callsign} with {len(route)} route nodes from {origin} to {destination}")
 
+def _coords_to_json(coords) -> list[float]:
+    return [float(coords[0]), float(coords[1])]
+
+def _route_to_json(route: list) -> list[list[float]]:
+    return [_coords_to_json(point) for point in route]
+
+def _mission_plan_payload(plan: dict) -> dict:
+    return {
+        "route": _route_to_json(plan["route"]),
+        "snapped_origin": _coords_to_json(plan["snapped_origin"]),
+        "snapped_destination": _coords_to_json(plan["snapped_destination"]),
+        "distance": float(plan["distance"]),
+    }
+
 async def handle_plan_mission(data: dict, websocket: WebSocket):
-    from app.simulation.engine import simulation_engine
     origin = data.get("origin")
     destination = data.get("destination")
     
     if not origin or not destination:
         return
         
-    origin = tuple(origin) if isinstance(origin, list) else origin
-    destination = tuple(destination) if isinstance(destination, list) else destination
+    origin = _normalize_lnglat(origin)
+    destination = _normalize_lnglat(destination)
     
-    plan = None
-    if simulation_engine.routing_engine:
-        plan = simulation_engine.routing_engine.plan_route(origin, destination)
-        
-    if plan:
+    try:
+        plan = None
+        if simulation_engine.routing_engine:
+            plan = await asyncio.to_thread(
+                simulation_engine.routing_engine.plan_route,
+                origin,
+                destination,
+            )
+
+        if not plan:
+            plan = {
+                "route": [],
+                "snapped_origin": origin,
+                "snapped_destination": destination,
+                "distance": 0.0,
+            }
+            logger.warning("plan_mission: routing failed, returning empty plan")
+
         await websocket.send_json({
             "type": "MISSION_PLAN_RESULT",
-            "payload": {
-                "route": plan["route"],
-                "snapped_origin": plan["snapped_origin"],
-                "snapped_destination": plan["snapped_destination"],
-                "distance": plan["distance"]
-            }
+            "payload": _mission_plan_payload(plan),
+        })
+    except Exception as e:
+        logger.error(f"plan_mission failed: {e}")
+        await websocket.send_json({
+            "type": "MISSION_PLAN_RESULT",
+            "payload": _mission_plan_payload({
+                "route": [],
+                "snapped_origin": origin,
+                "snapped_destination": destination,
+                "distance": 0.0,
+            }),
         })
 
 @router.websocket("/ws")
@@ -171,7 +230,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 await handle_plan_mission(data, websocket)
             elif action == "dispatch_mission":
                 logger.info(f"dispatch_mission received: {data}")
-                handle_dispatch_mission(data)
+                await asyncio.to_thread(handle_dispatch_mission, data)
                 await manager.broadcast_state()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
