@@ -122,7 +122,11 @@ class RoutingEngine:
                         min_weight_key = min(edge_data.keys(), key=lambda k: edge_data[k].get('weight', 999999))
                         data = edge_data[min_weight_key]
                         if 'geometry' in data:
-                            coords = [(lon, lat) for lon, lat in data['geometry'].coords]
+                            geom = data['geometry']
+                            if isinstance(geom, str):
+                                import shapely.wkt
+                                geom = shapely.wkt.loads(geom)
+                            coords = [(lon, lat) for lon, lat in geom.coords]
                             # If edge was (v,u), we need to reverse the coords
                             if not self.operational_graph.has_edge(u, v) and self.operational_graph.has_edge(v, u):
                                 coords.reverse()

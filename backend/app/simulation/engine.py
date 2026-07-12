@@ -15,8 +15,11 @@ class SimulationEngine:
         self.tick_rate_ms = 100 
         self.replay_adapter = HistoricalReplayAdapter()
         try:
+            from app.simulation.routing_engine import RoutingEngine
             self.routing_engine = RoutingEngine()
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             logger.error(f"Failed to initialize routing engine: {e}")
             self.routing_engine = None
         

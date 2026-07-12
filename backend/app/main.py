@@ -66,5 +66,9 @@ def get_analysis_stats():
             "wind_speed_kmh": 45,
             "soil_saturation_pct": 98 if state.time > 10 else 75
         },
+        "debug": {
+            "routing_engine_exists": simulation_engine.routing_engine is not None,
+            "vehicle_0_route_len": len(state.vehicles[0].route) if state.vehicles else -1
+        },
         "timeline": timeline_events
     }
